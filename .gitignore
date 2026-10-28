@@ -1,0 +1,14 @@
+node_modules/
+dist/
+tmp/
+playwright-report/
+test-results/
+tsp-output/
+*.log
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.DS_Store
+.idea/
+.vscode/

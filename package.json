@@ -1,0 +1,58 @@
+{
+  "name": "pc-parts-store",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Интернет-магазин комплектующих для ПК: React-фронтенд и Fastify-бэкенд на одном origin (учебный проект Хекслета)",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "vite",
+    "dev:server": "tsx watch --env-file=.env src/server/index.ts",
+    "generate": "npm run generate:openapi && npm run generate:server && npm run generate:client",
+    "generate:openapi": "tsp compile contract",
+    "generate:server": "openapi-box contract/openapi.yaml -o src/server/generated/schema.js && oxfmt src/server/generated",
+    "generate:client": "openapi-typescript contract/openapi.yaml -o src/client/api/schema.d.ts && oxfmt src/client/api/schema.d.ts",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "tsc -p tsconfig.client.json && vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "start": "node dist/server/index.js",
+    "mock": "npx --yes @stoplight/prism-cli mock contract/openapi.yaml",
+    "test": "playwright test",
+    "typecheck": "tsc -p tsconfig.client.json && tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.node.json",
+    "lint": "oxlint && oxfmt --ignore-path=.oxfmtignore --check",
+    "lint:fix": "oxfmt --ignore-path=.oxfmtignore && oxlint --fix"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.5",
+    "@fastify/static": "^10.1.8",
+    "@sentry/node": "^11.9.0",
+    "@sinclair/typebox": "^0.34.52",
+    "fastify": "^5.12.7",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@geut/openapi-box": "^5.0.8",
+    "@playwright/test": "^1.64.1",
+    "@sentry/react": "^11.9.0",
+    "@types/node": "^24.19.2",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@typespec/compiler": "^1.17.0",
+    "@typespec/http": "^1.17.0",
+    "@typespec/openapi": "^1.17.0",
+    "@typespec/openapi3": "^1.17.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "openapi-typescript": "^7.13.0",
+    "oxfmt": "0.63.0",
+    "oxlint": "1.78.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router": "^7.18.5",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.3",
+    "vite": "^8.3.5"
+  }
+}

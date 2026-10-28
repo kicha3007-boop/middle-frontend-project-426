@@ -1,0 +1,105 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Установка зависимостей
+        run: make install
+
+      - name: Линтер
+        run: make lint
+
+      - name: Проверка типов
+        run: make typecheck
+
+      # Сгенерированное руками не правится: генерация из контракта не должна давать изменений.
+      - name: Генерация из TypeSpec совпадает с закоммиченной
+        run: |
+          make generate
+          git diff --exit-code -- contract/openapi.yaml src/server/generated src/client/api/schema.d.ts
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: store
+          POSTGRES_PASSWORD: store
+          POSTGRES_DB: store
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U store"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      # Тесты идут против того же образа, что уезжает в прод.
+      - name: Сборка образа
+        run: docker build -t pc-parts-store .
+
+      - name: Запуск приложения из образа
+        run: |
+          docker run -d --name app --network host \
+            -e PORT=8080 -e DATABASE_URL=postgres://store:store@localhost:5432/store \
+            pc-parts-store
+          for i in $(seq 1 60); do
+            curl -fsS http://localhost:8080/api/health > /dev/null && exit 0
+            sleep 1
+          done
+          docker logs app
+          exit 1
+
+      - name: Установка зависимостей и браузера
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Браузерные тесты
+        run: make test
+        env:
+          APP_URL: http://localhost:8080
+
+      # Повторный старт не задваивает каталог: сид идемпотентен.
+      - name: Перезапуск не создаёт дублей
+        run: |
+          docker restart app
+          for i in $(seq 1 60); do
+            curl -fsS http://localhost:8080/api/health > /dev/null && break
+            sleep 1
+          done
+          test "$(curl -fsS 'http://localhost:8080/api/products?pageSize=1' | jq .total)" = "54"
+
+      - name: Логи приложения
+        if: failure()
+        run: docker logs app
+
+      - name: Отчёт Playwright при падении
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: tmp/
+          retention-days: 7

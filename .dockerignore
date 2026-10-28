@@ -1,0 +1,10 @@
+**/node_modules
+**/dist
+**/tmp
+**/tsp-output
+**/*.log
+.git
+.github
+.env
+playwright-report
+test-results

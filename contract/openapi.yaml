@@ -1,0 +1,665 @@
+openapi: 3.0.0
+info:
+  title: PC Parts Store API
+  version: 1.0.0
+  description: API интернет-магазина комплектующих для ПК. Единственный источник правды о форме запросов и ответов.
+tags:
+  - name: Служебное
+  - name: Авторизация
+  - name: Каталог
+  - name: Главная
+  - name: Заказы
+paths:
+  /auth/login:
+    post:
+      operationId: Auth_login
+      description: Вход по email и паролю. Открывает сессию (cookie).
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Авторизация
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+  /auth/logout:
+    post:
+      operationId: Auth_logout
+      description: 'Выход: сессия удаляется на сервере.'
+      parameters: []
+      responses:
+        '204':
+          description: 'There is no content to send for this request, but the headers may be useful. '
+      tags:
+        - Авторизация
+  /auth/me:
+    get:
+      operationId: Auth_me
+      description: Текущий пользователь по cookie сессии.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUser'
+      tags:
+        - Авторизация
+  /auth/register:
+    post:
+      operationId: Auth_register
+      description: Регистрация. Сразу открывает сессию (cookie).
+      parameters: []
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Авторизация
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+  /categories:
+    get:
+      operationId: Categories_list
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+      tags:
+        - Каталог
+  /health:
+    get:
+      operationId: Health_check
+      description: Приложение живо и база доступна.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - ok
+                required:
+                  - status
+      tags:
+        - Служебное
+  /orders:
+    post:
+      operationId: Orders_create
+      description: 'Оформление заказа текущим пользователем. Атомарно: при проблемном товаре заказ не создаётся.'
+      parameters: []
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Заказы
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+    get:
+      operationId: Orders_list
+      description: Заказы текущего пользователя, новые первыми.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Заказы
+  /orders/{id}:
+    get:
+      operationId: Orders_read
+      description: Один заказ текущего пользователя. Чужой заказ — 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Заказы
+  /products:
+    get:
+      operationId: Products_list
+      description: 'Выдача каталога: фильтрация и пагинация на сервере.'
+      parameters:
+        - $ref: '#/components/parameters/ProductListQuery.category'
+        - $ref: '#/components/parameters/ProductListQuery.priceMin'
+        - $ref: '#/components/parameters/ProductListQuery.priceMax'
+        - $ref: '#/components/parameters/ProductListQuery.available'
+        - $ref: '#/components/parameters/ProductListQuery.q'
+        - $ref: '#/components/parameters/ProductListQuery.page'
+        - $ref: '#/components/parameters/ProductListQuery.pageSize'
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPage'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Каталог
+  /products/{id}:
+    get:
+      operationId: Products_read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - Каталог
+  /promos:
+    get:
+      operationId: Promos_list
+      description: Промо-блоки главной страницы. Список может быть пустым.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Promo'
+      tags:
+        - Главная
+components:
+  parameters:
+    ProductListQuery.available:
+      name: available
+      in: query
+      required: false
+      description: true — только товары в наличии.
+      schema:
+        type: boolean
+      explode: false
+    ProductListQuery.category:
+      name: category
+      in: query
+      required: false
+      description: Слаг категории.
+      schema:
+        type: string
+        maxLength: 64
+      explode: false
+    ProductListQuery.page:
+      name: page
+      in: query
+      required: false
+      description: Номер страницы, начиная с 1.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        default: 1
+      explode: false
+    ProductListQuery.pageSize:
+      name: pageSize
+      in: query
+      required: false
+      description: Размер страницы, не больше 48.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 48
+        default: 12
+      explode: false
+    ProductListQuery.priceMax:
+      name: priceMax
+      in: query
+      required: false
+      description: Верхняя граница цены, включительно.
+      schema:
+        $ref: '#/components/schemas/Money'
+      explode: false
+    ProductListQuery.priceMin:
+      name: priceMin
+      in: query
+      required: false
+      description: Нижняя граница цены, включительно.
+      schema:
+        $ref: '#/components/schemas/Money'
+      explode: false
+    ProductListQuery.q:
+      name: q
+      in: query
+      required: false
+      description: Поиск по части названия без учёта регистра.
+      schema:
+        type: string
+        maxLength: 100
+      explode: false
+  schemas:
+    ApiError:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Машинный код ошибки, например VALIDATION_ERROR или EMAIL_TAKEN.
+        message:
+          type: string
+          description: Понятное человеку сообщение.
+        problems:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderProblem'
+          description: Товары, из-за которых не оформился заказ (только для ORDER_ITEMS_UNAVAILABLE).
+      description: Общий формат ошибки API — один для всех ресурсов.
+    Category:
+      type: object
+      required:
+        - id
+        - slug
+        - name
+      properties:
+        id:
+          type: integer
+          format: int32
+        slug:
+          type: string
+        name:
+          type: string
+    CreateOrderRequest:
+      type: object
+      required:
+        - items
+        - receipt
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemInput'
+          minItems: 1
+          maxItems: 50
+        receipt:
+          $ref: '#/components/schemas/ReceiptInput'
+      description: 'Тело оформления: только состав корзины и данные получения — без цен и итога.'
+    Credentials:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          maxLength: 254
+          format: email
+        password:
+          type: string
+          minLength: 6
+          maxLength: 128
+    CurrentUser:
+      type: object
+      required:
+        - user
+      properties:
+        user:
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/User'
+          nullable: true
+          description: null — посетитель не авторизован.
+    DeliveryMethod:
+      type: string
+      enum:
+        - delivery
+        - pickup
+    Money:
+      type: integer
+      format: int32
+      minimum: 0
+      description: Денежная сумма в целых рублях, без копеек.
+    Order:
+      type: object
+      required:
+        - id
+        - status
+        - createdAt
+        - method
+        - recipientName
+        - phone
+        - address
+        - total
+        - lines
+      properties:
+        id:
+          type: integer
+          format: int32
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        createdAt:
+          type: string
+          format: date-time
+        method:
+          $ref: '#/components/schemas/DeliveryMethod'
+        recipientName:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+          nullable: true
+        total:
+          $ref: '#/components/schemas/Money'
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderLine'
+    OrderItemInput:
+      type: object
+      required:
+        - productId
+        - quantity
+      properties:
+        productId:
+          type: integer
+          format: int32
+          minimum: 1
+        quantity:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 99
+    OrderLine:
+      type: object
+      required:
+        - productId
+        - name
+        - price
+        - quantity
+        - subtotal
+      properties:
+        productId:
+          type: integer
+          format: int32
+        name:
+          type: string
+        price:
+          $ref: '#/components/schemas/Money'
+        quantity:
+          type: integer
+          format: int32
+        subtotal:
+          $ref: '#/components/schemas/Money'
+      description: Позиция заказа — снимок товара на момент покупки.
+    OrderProblem:
+      type: object
+      required:
+        - productId
+        - reason
+      properties:
+        productId:
+          type: integer
+          format: int32
+        name:
+          type: string
+          description: Название, если товар найден в каталоге.
+        reason:
+          $ref: '#/components/schemas/OrderProblemReason'
+      description: Товар, из-за которого заказ не оформился.
+    OrderProblemReason:
+      type: string
+      enum:
+        - not_found
+        - unavailable
+    OrderStatus:
+      type: string
+      enum:
+        - paid
+    Product:
+      type: object
+      required:
+        - id
+        - slug
+        - name
+        - description
+        - price
+        - imageUrl
+        - available
+        - category
+      properties:
+        id:
+          type: integer
+          format: int32
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          $ref: '#/components/schemas/Money'
+        imageUrl:
+          type: string
+          nullable: true
+          description: Относительный адрес изображения; null — изображения нет, показывается заглушка.
+        available:
+          type: boolean
+        category:
+          $ref: '#/components/schemas/Category'
+    ProductPage:
+      type: object
+      required:
+        - items
+        - page
+        - pageSize
+        - total
+        - totalPages
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+        total:
+          type: integer
+          format: int32
+        totalPages:
+          type: integer
+          format: int32
+    Promo:
+      type: object
+      required:
+        - id
+        - title
+        - text
+        - product
+      properties:
+        id:
+          type: integer
+          format: int32
+        title:
+          type: string
+        text:
+          type: string
+        product:
+          $ref: '#/components/schemas/Product'
+    ReceiptInput:
+      type: object
+      required:
+        - method
+        - recipientName
+        - phone
+      properties:
+        method:
+          $ref: '#/components/schemas/DeliveryMethod'
+        recipientName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        phone:
+          type: string
+          minLength: 5
+          maxLength: 30
+        address:
+          type: string
+          maxLength: 300
+      description: Данные получения. При доставке адрес обязателен, при самовывозе не передаётся.
+    User:
+      type: object
+      required:
+        - id
+        - email
+      properties:
+        id:
+          type: integer
+          format: int32
+        email:
+          type: string
+servers:
+  - url: /api
+    description: Тот же origin, что и фронтенд
+    variables: {}
